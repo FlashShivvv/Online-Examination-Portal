@@ -1,0 +1,227 @@
+import java.awt.*;
+import java.util.ArrayList;
+import javax.swing.*;
+
+public class Time extends JFrame {
+    private ArrayList<Question> questions = new ArrayList<>();
+    private ArrayList<String> userAnswers = new ArrayList<>();
+    private int currentQuestion = 0;
+    private int timeLeft = 1800;
+    private Timer timer;
+
+    private JLabel timerLabel, questionLabel;
+    private JPanel answerPanel;
+    private ButtonGroup buttonGroup;
+    private JButton prevBtn, nextBtn, submitBtn;
+
+    public Time() {
+        loadQuestions();
+        setupWindow();
+        startTimer();
+        showQuestion();
+    }
+
+    private void loadQuestions() {
+        questions.add(new Question("What is the capital of France?",
+                new String[]{"London", "Berlin", "Paris", "Madrid"}, "Paris", false));
+
+        questions.add(new Question("Which are programming languages? (Multiple)",
+                new String[]{"Java", "HTML", "Python", "CSS"}, "Java,Python", true));
+
+        questions.add(new Question("Java is platform independent. (True/False)",
+                new String[]{"True", "False"}, "True", false));
+
+        questions.add(new Question("What does OOP stand for?",
+                new String[]{"Object Oriented Programming", "Open Operation Protocol"},
+                "Object Oriented Programming", false));
+
+        questions.add(new Question("Which company developed Java?",
+                new String[]{"Microsoft", "Sun Microsystems", "Apple", "Google"},
+                "Sun Microsystems", false));
+
+        for (int i = 0; i < questions.size(); i++) userAnswers.add("");
+    }
+
+    private void setupWindow() {
+        setTitle("Online Exam System");
+        setSize(800, 600);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout(10, 10));
+
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setBackground(new Color(70, 130, 180));
+        topPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        JLabel title = new JLabel("Java Programming Exam", JLabel.CENTER);
+        title.setFont(new Font("Arial", Font.BOLD, 20));
+        title.setForeground(Color.WHITE);
+
+        timerLabel = new JLabel("Time: 30:00", JLabel.RIGHT);
+        timerLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        timerLabel.setForeground(Color.YELLOW);
+
+        topPanel.add(title, BorderLayout.CENTER);
+        topPanel.add(timerLabel, BorderLayout.EAST);
+        add(topPanel, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel(new BorderLayout(10, 10));
+        centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        questionLabel = new JLabel();
+        questionLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+        centerPanel.add(questionLabel, BorderLayout.NORTH);
+
+        answerPanel = new JPanel();
+        answerPanel.setLayout(new BoxLayout(answerPanel, BoxLayout.Y_AXIS));
+        centerPanel.add(answerPanel, BorderLayout.CENTER);
+
+        add(centerPanel, BorderLayout.CENTER);
+
+        JPanel bottomPanel = new JPanel(new FlowLayout());
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        prevBtn = new JButton("Previous");
+        prevBtn.addActionListener(e -> previousQuestion());
+
+        nextBtn = new JButton("Next");
+        nextBtn.addActionListener(e -> nextQuestion());
+
+        submitBtn = new JButton("Submit Exam");
+        submitBtn.setBackground(Color.RED);
+        submitBtn.setForeground(Color.WHITE);
+        submitBtn.addActionListener(e -> submitExam());
+
+        bottomPanel.add(prevBtn);
+        bottomPanel.add(nextBtn);
+        bottomPanel.add(submitBtn);
+        add(bottomPanel, BorderLayout.SOUTH);
+
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    private void startTimer() {
+        timer = new Timer(1000, e -> {
+            timeLeft--;
+            int mins = timeLeft / 60;
+            int secs = timeLeft % 60;
+            timerLabel.setText(String.format("Time: %02d:%02d", mins, secs));
+            if (timeLeft <= 0) {
+                timer.stop();
+                JOptionPane.showMessageDialog(this, "Time's up!");
+                submitExam();
+            }
+        });
+        timer.start();
+    }
+
+    private void showQuestion() {
+        Question q = questions.get(currentQuestion);
+        questionLabel.setText("Q" + (currentQuestion + 1) + ": " + q.text);
+        answerPanel.removeAll();
+        buttonGroup = new ButtonGroup();
+
+        if (q.isMultiple) {
+            for (String option : q.options) {
+                JCheckBox cb = new JCheckBox(option);
+                cb.setFont(new Font("Arial", Font.PLAIN, 14));
+                answerPanel.add(cb);
+                if (userAnswers.get(currentQuestion).contains(option)) cb.setSelected(true);
+            }
+        } else {
+            for (String option : q.options) {
+                JRadioButton rb = new JRadioButton(option);
+                rb.setFont(new Font("Arial", Font.PLAIN, 14));
+                buttonGroup.add(rb);
+                answerPanel.add(rb);
+                if (userAnswers.get(currentQuestion).equals(option)) rb.setSelected(true);
+            }
+        }
+
+        prevBtn.setEnabled(currentQuestion > 0);
+        answerPanel.revalidate();
+        answerPanel.repaint();
+    }
+
+    private void saveAnswer() {
+        Question q = questions.get(currentQuestion);
+        String answer = "";
+        if (q.isMultiple) {
+            ArrayList<String> selected = new ArrayList<>();
+            for (Component c : answerPanel.getComponents()) {
+                JCheckBox cb = (JCheckBox) c;
+                if (cb.isSelected()) selected.add(cb.getText());
+            }
+            answer = String.join(",", selected);
+        } else {
+            for (Component c : answerPanel.getComponents()) {
+                JRadioButton rb = (JRadioButton) c;
+                if (rb.isSelected()) {
+                    answer = rb.getText();
+                    break;
+                }
+            }
+        }
+        userAnswers.set(currentQuestion, answer);
+    }
+
+    private void previousQuestion() {
+        if (currentQuestion > 0) {
+            saveAnswer();
+            currentQuestion--;
+            showQuestion();
+        }
+    }
+
+    private void nextQuestion() {
+        saveAnswer();
+        if (currentQuestion < questions.size() - 1) {
+            currentQuestion++;
+            showQuestion();
+        }
+    }
+
+    private void submitExam() {
+        int choice = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to submit?", "Confirm",
+                JOptionPane.YES_NO_OPTION);
+        if (choice != JOptionPane.YES_OPTION) return;
+        timer.stop();
+        saveAnswer();
+
+        int correct = 0;
+        for (int i = 0; i < questions.size(); i++) {
+            if (userAnswers.get(i).equals(questions.get(i).correctAnswer)) correct++;
+        }
+
+        double percent = (correct * 100.0) / questions.size();
+        String grade = percent >= 90 ? "A" : percent >= 80 ? "B" :
+                percent >= 70 ? "C" : percent >= 60 ? "D" : "F";
+
+        String msg = String.format(
+                "Exam Complete!\n\nCorrect: %d/%d\nScore: %.1f%%\nGrade: %s",
+                correct, questions.size(), percent, grade);
+
+        JOptionPane.showMessageDialog(this, msg, "Results",
+                JOptionPane.INFORMATION_MESSAGE);
+        System.exit(0);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(Time::new);
+    }
+}
+
+class Question {
+    String text;
+    String[] options;
+    String correctAnswer;
+    boolean isMultiple;
+
+    Question(String text, String[] options, String correctAnswer, boolean isMultiple) {
+        this.text = text;
+        this.options = options;
+        this.correctAnswer = correctAnswer;
+        this.isMultiple = isMultiple;
+    }
+}
